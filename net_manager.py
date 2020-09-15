@@ -17,7 +17,13 @@ class NetManager:
     Net manager for the VAE
     """
 
-    def __init__(self, model, device, train_loader=None, test_loader=None):
+    def __init__(
+            self,
+            model,
+            device,
+            train_loader=None,
+            test_loader=None,
+            lr=1e-3):
         """
         Constructor
         """
@@ -27,7 +33,7 @@ class NetManager:
         self.train_loader = train_loader
         self.test_loader = test_loader
 
-        self.optimizer = optim.Adam(self.model.parameters(), lr=1e-3)
+        self.optimizer = optim.Adam(self.model.parameters(), lr=lr)
 
     def set_writer(self, board_name):
         """
@@ -55,21 +61,30 @@ class NetManager:
         torch.save(self.model.state_dict(), network_state_name)
 
     # Reconstruction + KL divergence losses summed over all elements and batch
-    def loss_function(self, reconstructed_x, x, mu, logvar):
-        BCE = F.binary_cross_entropy(
-            self.model.flatten(reconstructed_x),
-            self.model.flatten(x),
-            reduction='sum')
+    def loss_function(self, reconstructed_x, x, mu, logvar, use_bce=True):
+        if use_bce:
+            reconstruction_loss = F.binary_cross_entropy(
+                self.model.flatten(reconstructed_x),
+                self.model.flatten(x),
+                reduction='sum')
+        else:
+            reconstruction_loss = F.mse_loss(
+                self.model.flatten(reconstructed_x),
+                self.model.flatten(x),
+                reduction='sum')
+
+        # Adding a beta value for a beta VAE. With beta = 1, standard VAE
+        beta = 1.0
 
         # see Appendix B from VAE paper:
         # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
         # https://arxiv.org/abs/1312.6114
         # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
-        KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+        KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp()) * beta
 
-        return BCE + KLD
+        return reconstruction_loss + KLD
 
-    def train(self, epochs, log_interval=10):
+    def train(self, epochs, log_interval=10, use_bce=True):
         if self.train_loader is None:
             return
 
@@ -86,7 +101,13 @@ class NetManager:
                 data = data.to(self.device)
                 self.optimizer.zero_grad()
                 recon_batch, mu, logvar = self.model(data)
-                loss = self.loss_function(recon_batch, data, mu, logvar)
+                loss = self.loss_function(
+                    recon_batch,
+                    data,
+                    mu,
+                    logvar,
+                    use_bce=use_bce)
+
                 loss.backward()
                 train_loss += loss.item()
                 self.optimizer.step()
@@ -105,7 +126,7 @@ class NetManager:
 
         self.writer.close()
 
-    def epoch_test(self, epoch):
+    def epoch_test(self, epoch, use_bce=True):
         if self.test_loader is None:
             return
 
@@ -120,7 +141,8 @@ class NetManager:
                     recon_batch,
                     data,
                     mu,
-                    logvar).item()
+                    logvar,
+                    use_bce=use_bce).item()
 
                 if i == 0:
                     n = min(data.size(0), 8)
