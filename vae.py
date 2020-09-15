@@ -9,13 +9,18 @@ class Flatten(nn.Module):
 
 
 class UnFlatten(nn.Module):
-    def __init__(self, n_channels):
+    def __init__(self, n_channels, height, width):
         super(UnFlatten, self).__init__()
         self.n_channels = n_channels
+        self.height = height
+        self.width = width
 
     def forward(self, input):
-        size = int((input.size(1) // self.n_channels)**0.5)
-        return input.view(input.size(0), self.n_channels, size, size)
+        return input.view(
+            input.size(0),
+            self.n_channels,
+            self.height,
+            self.width)
 
 
 class BaseVAE(nn.Module):
@@ -67,14 +72,14 @@ class BaseVAE(nn.Module):
         Can be used to flatten the output image. This method will only handle
         images of the original size specified for the network
         """
-        return x.view(-1, self.channels * self.width * self.height)
+        return x.view(-1, self.channels * self.height * self.width)
 
     def unflatten(self, x):
         """
         Can be used to unflatten an image handled by the network. This method
         will only handle images of the original size specified for the network
         """
-        return x.view(-1, self.channels, self.width, self.height)
+        return x.view(-1, self.channels, self.height, self.width)
 
 
 class FCVAE(BaseVAE):
@@ -116,7 +121,7 @@ class ConvVAE(BaseVAE):
     def __init__(self, channels=3, width=28, height=28, z_dim=32):
         super(ConvVAE, self).__init__(channels, width, height, z_dim)
 
-        self.encoder = nn.Sequential(
+        self.encoder_conv = nn.Sequential(
             nn.Conv2d(self.channels, 8, kernel_size=4, stride=1),
             nn.ReLU(),
             nn.Conv2d(8, 16, kernel_size=4, stride=1),
@@ -124,18 +129,21 @@ class ConvVAE(BaseVAE):
             nn.Conv2d(16, 32, kernel_size=4, stride=1),
             nn.ReLU(),
             nn.Conv2d(32, 64, kernel_size=4, stride=1),
-            nn.ReLU(),
+            nn.ReLU())
+
+        self.encoder = nn.Sequential(
+            self.encoder_conv,
             Flatten())
 
-        dummy_input = torch.ones([1, self.channels, self.width, self.height])
+        dummy_input = torch.ones([1, self.channels, self.height, self.width])
+        conv_size = self.encoder_conv_test(dummy_input).size()
         h_dim = self.encoder(dummy_input).size(1)
 
         self.fc1 = nn.Linear(h_dim, self.z_dim)
         self.fc2 = nn.Linear(h_dim, self.z_dim)
         self.fc3 = nn.Linear(self.z_dim, h_dim)
 
-        self.decoder = nn.Sequential(
-            UnFlatten(64),
+        self.decoder_conv = nn.Sequential(
             nn.ConvTranspose2d(64, 32, kernel_size=4, stride=1),
             nn.ReLU(),
             nn.ConvTranspose2d(32, 16, kernel_size=4, stride=1),
@@ -144,6 +152,10 @@ class ConvVAE(BaseVAE):
             nn.ReLU(),
             nn.ConvTranspose2d(8, self.channels, kernel_size=4, stride=1),
             nn.Sigmoid())
+
+        self.decoder = nn.Sequential(
+            UnFlatten(conv_size[1], conv_size[2], conv_size[3]),
+            self.decoder_conv)
 
     def reparameterize(self, mu, logvar):
         std = torch.exp(0.5*logvar)
