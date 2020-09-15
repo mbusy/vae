@@ -161,6 +161,70 @@ class NetManager:
             test_loss / len(self.test_loader.dataset),
             epoch)
 
+    def plot_latent_slice(self):
+        """
+        Plots a slice of the latent space manifold (decoded images). The first
+        2 dimensions of the latent space are sampled uniformily, the remaining
+        are set to 0
+        """
+        self.model.eval()
+        filename = os.path.join("results/digits_over_latent.png")
+
+        # display a 30x30 2D manifold of images (we consider that the images
+        # have the same width and height)
+        n = 30
+        image_size = self.model.width
+
+        figure = np.zeros((
+            self.model.channels,
+            image_size * n,
+            image_size * n))
+
+        if self.model.channels > 1:
+            shape = (self.model.channels, image_size, image_size)
+        else:
+            shape = (image_size, image_size)
+
+        # linearly spaced coordinates corresponding to the 2D plot
+        # of digit classes in the latent space
+        grid_x = np.linspace(-10.0, 10.0, n)
+        grid_y = np.linspace(-10.0, 10.0, n)[::-1]
+
+        with torch.no_grad():
+            for i, yi in enumerate(grid_y):
+                for j, xi in enumerate(grid_x):
+                    z_sample = np.zeros((1, self.model.z_dim))
+                    z_sample[0][0] = xi
+                    z_sample[0][1] = yi
+                    z_tensor = torch.from_numpy(z_sample).float().to(
+                        self.device)
+
+                    z_tensor = self.model.fc3(z_tensor)
+                    x_decoded = self.model.decoder(z_tensor)
+                    image = x_decoded.cpu().detach().numpy().reshape(shape)
+
+                    figure[
+                        :,
+                        i * image_size: (i + 1) * image_size,
+                        j * image_size: (j + 1) * image_size] = image
+
+        figure = figure.transpose(1, 2, 0)
+        print(figure.shape)
+
+        plt.figure(figsize=(10, 10))
+        start_range = image_size // 2
+        end_range = (n - 1) * image_size + start_range + 1
+        pixel_range = np.arange(start_range, end_range, image_size)
+        sample_range_x = np.round(grid_x, 1)
+        sample_range_y = np.round(grid_y, 1)
+        plt.xticks(pixel_range, sample_range_x)
+        plt.yticks(pixel_range, sample_range_y)
+        plt.xlabel("z[0]")
+        plt.ylabel("z[1]")
+        plt.imshow(figure, cmap='Greys_r')
+        plt.savefig(filename)
+        plt.show()
+
     def plot_results(self, dark_background=False):
         """
         Plots labels as a function of the 2D latent vector
