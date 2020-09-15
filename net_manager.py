@@ -161,7 +161,7 @@ class NetManager:
             test_loss / len(self.test_loader.dataset),
             epoch)
 
-    def plot_latent_slice(self):
+    def plot_latent_slice(self, dark_background=False):
         """
         Plots a slice of the latent space manifold (decoded images). The first
         2 dimensions of the latent space are sampled uniformily, the remaining
@@ -209,7 +209,9 @@ class NetManager:
                         j * image_size: (j + 1) * image_size] = image
 
         figure = figure.transpose(1, 2, 0)
-        print(figure.shape)
+
+        if dark_background:
+            plt.style.use('dark_background')
 
         plt.figure(figsize=(10, 10))
         start_range = image_size // 2
