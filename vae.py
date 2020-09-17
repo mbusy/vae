@@ -136,7 +136,7 @@ class ConvVAE(BaseVAE):
             Flatten())
 
         dummy_input = torch.ones([1, self.channels, self.height, self.width])
-        conv_size = self.encoder_conv_test(dummy_input).size()
+        conv_size = self.encoder_conv(dummy_input).size()
         h_dim = self.encoder(dummy_input).size(1)
 
         self.fc1 = nn.Linear(h_dim, self.z_dim)
