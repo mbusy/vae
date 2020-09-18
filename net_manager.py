@@ -60,8 +60,16 @@ class NetManager:
         """
         torch.save(self.model.state_dict(), network_state_name)
 
-    # Reconstruction + KL divergence losses summed over all elements and batch
     def loss_function(self, reconstructed_x, x, mu, logvar, use_bce=True):
+        """
+        Reconstruction + KL divergence losses summed over all elements and
+        batch.
+
+        If for the reconstruction loss, the binary cross entropy is used, be
+        sure to have an adequate activation for the last layer of the decoder
+        (eg a sigmoid). Same goes if binary cross entropy is not used (in that
+        case, mean squared error is used, you could use a tanh activation)
+        """
         if use_bce:
             reconstruction_loss = F.binary_cross_entropy(
                 self.model.flatten(reconstructed_x),
@@ -209,6 +217,9 @@ class NetManager:
                         j * image_size: (j + 1) * image_size] = image
 
         figure = figure.transpose(1, 2, 0)
+
+        if self.model.channels == 1:
+            figure = figure[:, :, 0]
 
         if dark_background:
             plt.style.use('dark_background')
