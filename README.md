@@ -11,7 +11,7 @@ Using `main.py`:
 python3 main.py
 
 # training
-python3 main.py --batch-size 128 --epochs 10 --seed 1 --log-interval
+python3 main.py --batch-size 128 --epochs 10 --seed 1 --log-interval 10
 
 # loading existing weights
 python3 main.py --weights weights/vae.pth
