@@ -166,7 +166,7 @@ class NetManager:
         test_loss /= len(self.test_loader.dataset)
         self.writer.add_scalar(
             'loss/test_loss',
-            test_loss / len(self.test_loader.dataset),
+            test_loss,
             epoch)
 
     def plot_latent_slice(self, dark_background=False):
