@@ -92,7 +92,7 @@ def main():
     else:
         net_manager.load_net(args.weights)
 
-    net_manager.plot_results(dark_background=True)
+    net_manager.plot_latent_space(dark_background=True)
 
 
 if __name__ == "__main__":

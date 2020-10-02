@@ -11,6 +11,12 @@ from mpl_toolkits.mplot3d import Axes3D
 from vae import FCVAE
 from vae import ConvVAE
 
+try:
+    from sklearn.manifold import TSNE
+
+except ImportError:
+    pass
+
 
 class NetManager:
     """
@@ -238,7 +244,7 @@ class NetManager:
         plt.savefig(filename)
         plt.show()
 
-    def plot_results(self, dark_background=False):
+    def plot_latent_space(self, dark_background=False, dimensions=2):
         """
         Plots labels as a function of the 2D latent vector
         """
@@ -275,13 +281,20 @@ class NetManager:
 
         fig = plt.figure(figsize=(12, 10))
 
-        if self.model.getZDim() == 2:
+        if self.model.getZDim() > dimensions:
+            try:
+                z_mean = TSNE(n_components=dimensions).fit_transform(z_mean)
+            
+            except Exception:
+                print("Cannot use T-SNE, sklearn might not be installed")
+
+        if z_mean.shape[1] == 2:
             plt.scatter(z_mean[:, 0], z_mean[:, 1], c=targets)
             plt.xlabel("z[0]")
             plt.ylabel("z[1]")
             plt.colorbar()
 
-        elif self.model.getZDim() == 3:
+        elif z_mean.shape[1] == 3:
             ax = fig.add_subplot(111, projection='3d')
             cloud = ax.scatter(
                 z_mean[:, 0],
@@ -298,8 +311,7 @@ class NetManager:
             print("Latent space dimension should be 2 or 3 to be displayed")
             return
 
-        plt.title(
-            "Latent space of the VAE")
+        plt.title("Latent space of the VAE")
 
         if not os.path.exists("results"):
             os.mkdir("results")
