@@ -207,7 +207,7 @@ class NetManager:
         with torch.no_grad():
             for i, yi in enumerate(grid_y):
                 for j, xi in enumerate(grid_x):
-                    z_sample = np.zeros((1, self.model.z_dim))
+                    z_sample = np.zeros((1, self.model.getZDim()))
                     z_sample[0][0] = xi
                     z_sample[0][1] = yi
                     z_tensor = torch.from_numpy(z_sample).float().to(
@@ -251,9 +251,10 @@ class NetManager:
         if self.test_loader is None:
             return
 
+        z_dim = self.model.getZDim()
         z_mean = np.zeros((
             len(self.test_loader.dataset),
-            self.model.getZDim()))
+            z_dim))
 
         targets = np.zeros(len(self.test_loader.dataset))
         idx = 0
@@ -281,7 +282,7 @@ class NetManager:
 
         fig = plt.figure(figsize=(12, 10))
 
-        if self.model.getZDim() > dimensions:
+        if z_dim > dimensions:
             try:
                 z_mean = TSNE(n_components=dimensions).fit_transform(z_mean)
             
@@ -311,7 +312,13 @@ class NetManager:
             print("Latent space dimension should be 2 or 3 to be displayed")
             return
 
-        plt.title("Latent space of the VAE")
+        if z_dim > dimensions:
+            title = "T-SNE visualization of the VAE latent space. "
+            title += "Original dimension: " + str(z_dim)
+        else:
+            title = "Latent space of the VAE"
+        
+        plt.title(title)
 
         if not os.path.exists("results"):
             os.mkdir("results")
